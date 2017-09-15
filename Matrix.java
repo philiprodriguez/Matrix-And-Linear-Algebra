@@ -2,6 +2,7 @@
 //Runtimes given in this class assume an m*n matrix.
 public class Matrix
 {
+  public static double epsilon = 1e-9;
 
   // O(m*n)
   public static double[][] getCopy(double[][] matrix)
@@ -17,7 +18,7 @@ public class Matrix
     return copy;
   }
 
-  // O(m*n)
+  // O(m*n^2)
   public static double[][] getReducedEchelonForm(double[][] matrix)
   {
     double[][] reduced = getCopy(matrix);
@@ -28,7 +29,7 @@ public class Matrix
       int hit = -1;
       for(int r = startRow; r < reduced.length; r++)
       {
-        if (Math.abs(reduced[r][c]) > 0)
+        if (!doubleEquals(reduced[r][c], 0.0))
         {
           hit = r;
           break;
@@ -51,7 +52,7 @@ public class Matrix
       //Cancel the other rows in this column...
       for(int r = 0; r < reduced.length; r++)
       {
-        if (r != hit && Math.abs(reduced[r][c]) > 0)
+        if (r != hit && !doubleEquals(reduced[r][c], 0.0))
         {
           //Cancel out row r...
           double fraction = -1.0*reduced[r][c]/reduced[hit][c];
@@ -64,6 +65,11 @@ public class Matrix
       multiplyRow(reduced, hit, 1.0/reduced[hit][c]);
     }
     return reduced;
+  }
+
+  private static boolean doubleEquals(double d1, double d2)
+  {
+    return Math.abs(d2-d1) <= epsilon;
   }
 
   //Add into row1 the row row2. Basically, row1 = row1+row2. O(n)
@@ -117,15 +123,112 @@ public class Matrix
     }
   }
 
+  // O(m*n^2)
+  public static boolean[] getPivotColumnInfo(double[][] matrix)
+  {
+    boolean[] pivot = new boolean[matrix[0].length];
+    double[][] reduced = getReducedEchelonForm(matrix);
+    for(int r = 0; r < reduced.length; r++)
+    {
+      for (int c = 0; c < reduced[0].length; c++)
+      {
+        //If this is the first non-zero element, then it is the pivot!
+        if (!doubleEquals(reduced[r][c], 0.0))
+        {
+          pivot[c] = true;
+          break;
+        }
+      }
+    }
+    return pivot;
+  }
+
+  //O(m*n^2)
+  public static boolean isConsistent(double[][] augmentedMatrix)
+  {
+    //Consistent iff not a pivot in rightmost column
+    return !getPivotColumnInfo(augmentedMatrix)[augmentedMatrix[0].length-1];
+  }
+
+  public static boolean hasSolution(double[][] augmentedMatrix)
+  {
+    return isConsistent(augmentedMatrix);
+  }
+
+  // O(m*n^2)
+  public static boolean hasFreeVariable(double[][] augmentedMatrix)
+  {
+    //Has free variable if there is a solution and there exists a non-pivot
+    //column besides last
+    if (!hasSolution(augmentedMatrix))
+      return false;
+    boolean[] pivotColumn = getPivotColumnInfo(augmentedMatrix);
+    for(int c = 0; c < augmentedMatrix[0].length-1; c++)
+    {
+      if (!pivotColumn[c])
+        return true;
+    }
+    return false;
+  }
+
+  public static boolean hasUniqueSolution(double[][] augmentedMatrix)
+  {
+    //Has unique solution iff no free variables and has solution!
+    return !hasFreeVariable(augmentedMatrix) && hasSolution(augmentedMatrix);
+  }
+
+  //Return true iff the column vectors are linearly independent
+  public static boolean isLinearlyIndependent(double[][] matrix)
+  {
+    //Linearly independent iff Ax=0 has only the trivial solution
+    double[][] augmentedMatrix = new double[matrix.length][matrix[0].length+1];
+    for(int r = 0; r < matrix.length; r++)
+    {
+      for(int c = 0; c < matrix[0].length; c++)
+      {
+        augmentedMatrix[r][c] = matrix[r][c];
+      }
+    }
+
+    return hasUniqueSolution(augmentedMatrix);
+  }
+
   public static void main(String[] args)
   {
-    double[][] matrix = {
+    double[][] matrix1 = {
       {1, 0, -2, -1},
       {-2, 1, 6, 7},
       {3, -2, -5, -3}
     };
-    print(matrix, 0);
-    System.out.println();
-    print(getReducedEchelonForm(matrix), 0);
+
+    double[][] matrix2 = {
+      {1, -3, 2, 6},
+      {0, 1, -4, -7},
+      {3, -5, -9, -9}
+    };
+
+    double[][] matrix3 = {
+      {1, -3, 2, 6},
+      {0, 1, -4, -7},
+      {3, -5, -9, -9},
+      {13, -2, -91, -19},
+      {3, -5, -9, -9}
+    };
+
+    print(getReducedEchelonForm(matrix1), 0);
+    print(getReducedEchelonForm(matrix2), 0);
+    print(getReducedEchelonForm(matrix3), 0);
+    System.out.println(isConsistent(matrix1));
+    System.out.println(isConsistent(matrix2));
+    System.out.println(isConsistent(matrix3));
+    System.out.println(hasFreeVariable(matrix1));
+    System.out.println(hasFreeVariable(matrix2));
+    System.out.println(hasFreeVariable(matrix3));
+    System.out.println(hasUniqueSolution(matrix1));
+    System.out.println(hasUniqueSolution(matrix2));
+    System.out.println(hasUniqueSolution(matrix3));
+    System.out.println(isLinearlyIndependent(matrix1));
+    System.out.println(isLinearlyIndependent(matrix2));
+    System.out.println(isLinearlyIndependent(matrix3));
   }
 }
